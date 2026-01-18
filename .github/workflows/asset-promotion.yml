@@ -1,0 +1,29 @@
+name: asset-promotion
+on:
+  workflow_call:
+    inputs:
+      suite:
+        required: true
+        type: string
+      baseline_path:
+        required: true
+        type: string
+
+jobs:
+  eval-asset-promotion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify suite and baseline
+        run: |
+          if [ ! -f "evals/suites/${{ inputs.suite }}.yml" ]; then
+            echo "Missing suite: evals/suites/${{ inputs.suite }}.yml"
+            exit 1
+          fi
+          if [ ! -f "${{ inputs.baseline_path }}" ]; then
+            echo "Missing baseline: ${{ inputs.baseline_path }}"
+            exit 1
+          fi
+      - name: Promotion checklist reminder
+        run: |
+          echo "Ensure ASSET_PROMOTION.md checklist is satisfied."
