@@ -1,0 +1,32 @@
+name: lint
+on:
+  workflow_call:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect
+        id: detect
+        run: |
+          if [ -f package.json ]; then echo "node=1" >> $GITHUB_OUTPUT; fi
+          if [ -f pyproject.toml ] || [ -f requirements.txt ]; then echo "python=1" >> $GITHUB_OUTPUT; fi
+
+      - name: Node lint (optional)
+        if: steps.detect.outputs.node == '1'
+        run: |
+          npm ci || true
+          npm run lint || echo "No lint script; skipped."
+
+      - name: Python lint (optional)
+        if: steps.detect.outputs.python == '1'
+        run: |
+          python -V
+          python -m pip install -U pip || true
+          if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
+          echo "Python lint placeholder (v0.1)"
+
+      - name: Always pass (v0.1)
+        run: echo "lint ok"

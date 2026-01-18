@@ -1,0 +1,17 @@
+name: release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag version (e.g., v0.1.0)"
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create tag
+        run: |
+          git tag ${{ inputs.version }}
+          git push origin ${{ inputs.version }}

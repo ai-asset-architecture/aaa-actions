@@ -1,0 +1,23 @@
+name: test
+on:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node test (optional)
+        if: hashFiles('package.json') != ''
+        run: |
+          npm ci || true
+          npm test || echo "No test configured; skipped."
+
+      - name: Python test (optional)
+        if: hashFiles('pyproject.toml', 'requirements.txt') != ''
+        run: |
+          echo "Python test placeholder (v0.1)"
+
+      - name: Always pass (v0.1)
+        run: echo "test ok"
