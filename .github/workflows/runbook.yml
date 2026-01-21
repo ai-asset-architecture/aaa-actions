@@ -1,0 +1,29 @@
+name: runbook
+on:
+  workflow_call:
+    inputs:
+      runbook_spec:
+        required: true
+        type: string
+
+jobs:
+  runbook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install aaa-tools
+        run: |
+          python3 -m pip install -U pip
+          python3 -m pip install "git+https://github.com/ai-asset-architecture/aaa-tools.git@v0.5.0"
+      - name: Run runbook
+        run: |
+          aaa run runbook "${{ inputs.runbook_spec }}"
+      - name: Upload runbook report
+        uses: actions/upload-artifact@v4
+        with:
+          name: runbook-report
+          path: |
+            aaa-runbook-report.json
