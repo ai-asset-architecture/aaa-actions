@@ -26,3 +26,9 @@ jobs:
       - name: Agent safety check
         if: ${{ hashFiles('runner/run_repo_checks.py') != '' }}
         run: python3 runner/run_repo_checks.py --check agent_safety --repo .
+      - name: Gate A smoke check
+        if: ${{ hashFiles('runner/run_repo_checks.py') != '' }}
+        run: python3 runner/run_repo_checks.py --check gate_a_smoke --repo .
+      - name: Runbook checksum guard
+        if: ${{ hashFiles('runner/run_repo_checks.py') != '' }}
+        run: python3 runner/run_repo_checks.py --check runbook_checksums --repo .
