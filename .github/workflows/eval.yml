@@ -20,3 +20,9 @@ jobs:
           fi
       - name: Always pass (v0.1)
         run: echo "eval ok"
+      - name: Orphaned assets check
+        if: ${{ hashFiles('runner/run_repo_checks.py') != '' }}
+        run: python3 runner/run_repo_checks.py --check orphaned_assets --repo .
+      - name: Agent safety check
+        if: ${{ hashFiles('runner/run_repo_checks.py') != '' }}
+        run: python3 runner/run_repo_checks.py --check agent_safety --repo .
