@@ -26,6 +26,11 @@ jobs:
         with:
           repository: ai-asset-architecture/aaa-evals
           path: aaa-evals
+      - name: Checkout aaa-actions
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-actions
+          path: aaa-actions
       - name: Checkout aaa-tpl-frontend
         uses: actions/checkout@v4
         with:
@@ -62,6 +67,7 @@ jobs:
         env:
           AAA_EVALS_ROOT: ${{ github.workspace }}/aaa-evals
           WORKSPACE_DIR: ${{ github.workspace }}
+          AAA_CHECKS_MANIFEST: ${{ github.workspace }}/aaa-actions/checks.manifest.json
         run: |
           mkdir -p /tmp/aaa-nightly
           cat <<'JSON' > /tmp/nightly-plan.json
