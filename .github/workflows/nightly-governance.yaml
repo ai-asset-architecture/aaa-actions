@@ -92,12 +92,12 @@ jobs:
             echo "  - EN: Validates safety blocks and boundary enforcement."
             echo ""
             echo "## Repo Checks (Governance)"
-          } > "${REPORT_PATH}"
+          } > /tmp/nightly_report.md
           aaa init repo-checks \
             --from-plan /tmp/nightly-plan.json \
             --org "${{ inputs.org }}" \
             --suite governance \
-            --jsonl --log-dir /tmp/aaa-nightly | tee /tmp/aaa-nightly/repo-checks.jsonl | tee -a "${REPORT_PATH}"
+            --jsonl --log-dir /tmp/aaa-nightly | tee /tmp/aaa-nightly/repo-checks.jsonl | tee -a /tmp/nightly_report.md
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -128,6 +128,7 @@ jobs:
           }
           Path("/tmp/aaa-nightly/nightly_governance.json").write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
           PY
+          cat /tmp/nightly_report.md > "${REPORT_PATH}"
       - name: Agent safety check
         env:
           AAA_TOOLS_ROOT: ${{ github.workspace }}/aaa-tools
@@ -139,6 +140,9 @@ jobs:
           python3 ./aaa-evals/runner/run_repo_checks.py \
             --check agent_safety \
             --repo "${{ github.workspace }}" | tee -a "${REPORT_PATH}"
+      - name: Reindex assets (post-report)
+        run: |
+          aaa run runbook --runbook-file ./aaa-tools/runbooks/ops/reindex-all-assets.yaml
       - name: Render governance dashboard
         run: |
           mkdir -p aaa-tpl-docs/docs/dashboard
