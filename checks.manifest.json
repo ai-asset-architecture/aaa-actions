@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "checks": [
+    {
+      "id": "lint",
+      "name": "ci/lint / lint (pull_request)",
+      "applies_to": ["all"]
+    },
+    {
+      "id": "test",
+      "name": "ci/test / test (pull_request)",
+      "applies_to": ["all"]
+    },
+    {
+      "id": "eval",
+      "name": "ci/eval / eval (pull_request)",
+      "applies_to": ["all"]
+    },
+    {
+      "id": "agent_safety",
+      "name": "Agent safety check",
+      "applies_to": ["agent", "genai-service"]
+    }
+  ]
+}
