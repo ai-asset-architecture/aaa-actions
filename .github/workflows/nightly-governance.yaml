@@ -63,6 +63,7 @@ jobs:
           AAA_EVALS_ROOT: ${{ github.workspace }}/aaa-evals
           WORKSPACE_DIR: ${{ github.workspace }}
         run: |
+          mkdir -p /tmp/aaa-nightly
           cat <<'JSON' > /tmp/nightly-plan.json
           {"repos":[{"name":"aaa-tpl-docs","repo_type":"docs"},{"name":"aaa-tpl-service","repo_type":"service"},{"name":"aaa-tpl-frontend","repo_type":"frontend"}]}
           JSON
@@ -90,7 +91,37 @@ jobs:
             --from-plan /tmp/nightly-plan.json \
             --org "${{ inputs.org }}" \
             --suite governance \
-            --jsonl --log-dir /tmp/aaa-nightly | tee -a "${REPORT_PATH}"
+            --jsonl --log-dir /tmp/aaa-nightly | tee /tmp/aaa-nightly/repo-checks.jsonl | tee -a "${REPORT_PATH}"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          lines = Path("/tmp/aaa-nightly/repo-checks.jsonl").read_text(encoding="utf-8").strip().splitlines()
+          repos = []
+          for line in lines:
+              try:
+                  payload = json.loads(line)
+              except json.JSONDecodeError:
+                  continue
+              if payload.get("event") != "result":
+                  continue
+              data = payload.get("data", {})
+              if "repo" in data and "checks" in data:
+                  repos.append({
+                      "name": data.get("repo"),
+                      "repo_type": "unknown",
+                      "archived": False,
+                      "checks": data.get("checks", []),
+                  })
+          snapshot = {
+              "generated_at": "${REPORT_TS}",
+              "org": "${{ inputs.org }}",
+              "repo_count": len(repos),
+              "compliance_rate": 0.0,
+              "repos": repos,
+          }
+          Path("/tmp/aaa-nightly/nightly_governance.json").write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
+          PY
       - name: Agent safety check
         env:
           AAA_TOOLS_ROOT: ${{ github.workspace }}/aaa-tools
@@ -102,6 +133,14 @@ jobs:
           python3 ./aaa-evals/runner/run_repo_checks.py \
             --check agent_safety \
             --repo "${{ github.workspace }}" | tee -a "${REPORT_PATH}"
+      - name: Render governance dashboard
+        run: |
+          mkdir -p aaa-tpl-docs/docs/dashboard
+          aaa ops render-dashboard \
+            --input /tmp/aaa-nightly/nightly_governance.json \
+            --md-out "${REPORT_PATH}" \
+            --html-out aaa-tpl-docs/docs/dashboard/index.html \
+            --threshold 0.8
       - name: Commit reports
         run: |
           cd aaa-tpl-docs
