@@ -54,15 +54,15 @@ jobs:
           REPORT_TS=$(date -u +%Y%m%d_%H%M)
           echo "REPORT_TS=${REPORT_TS}" >> "${GITHUB_ENV}"
           echo "REPORT_PATH=aaa-tpl-docs/reports/audits/nightly_governance_${REPORT_TS}.md" >> "${GITHUB_ENV}"
-      - name: Reindex assets (drift check)
-        run: |
-          aaa run runbook --runbook-file ./aaa-tools/runbooks/ops/reindex-all-assets.yaml
       - name: Org audit
         env:
           GH_TOKEN: ${{ github.token }}
           AAA_TPL_DOCS_DIR: ${{ github.workspace }}/aaa-tpl-docs
         run: |
           python3 ./aaa-evals/runner/run_github_audit.py
+      - name: Reindex assets (drift check)
+        run: |
+          aaa run runbook --runbook-file ./aaa-tools/runbooks/ops/reindex-all-assets.yaml
       - name: Repo checks (governance)
         env:
           AAA_EVALS_ROOT: ${{ github.workspace }}/aaa-evals

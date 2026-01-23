@@ -19,7 +19,7 @@
     {
       "id": "agent_safety",
       "name": "Agent safety check",
-      "applies_to": ["agent", "genai-service"]
+      "applies_to": ["agent", "genai-service", "docs", "service", "frontend"]
     }
   ]
 }
