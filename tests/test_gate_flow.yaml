@@ -1,0 +1,7 @@
+name: gate-flow-sim
+on:
+  workflow_dispatch:
+
+jobs:
+  governance-gate:
+    uses: ai-asset-architecture/aaa-actions/.github/workflows/reusable-gate.yaml@main

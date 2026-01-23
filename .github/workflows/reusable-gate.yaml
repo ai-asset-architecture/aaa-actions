@@ -1,0 +1,60 @@
+name: reusable-gate
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      tools-ref:
+        type: string
+        required: false
+        default: "main"
+      evals-ref:
+        type: string
+        required: false
+        default: "main"
+
+jobs:
+  governance-gate:
+    name: governance-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Checkout aaa-tools
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-tools
+          ref: ${{ inputs.tools-ref }}
+          path: aaa-tools
+
+      - name: Checkout aaa-evals
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-evals
+          ref: ${{ inputs.evals-ref }}
+          path: aaa-evals
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install AAA tools
+        run: python3 -m pip install -e ./aaa-tools
+
+      - name: Run governance gate
+        working-directory: repo/${{ inputs.working-directory }}
+        env:
+          AAA_EVALS_ROOT: ${{ github.workspace }}/aaa-evals
+          AAA_CHECKS_MANIFEST: ${{ github.workspace }}/aaa-actions/checks.manifest.json
+        run: aaa check --mode blocking
+
+      - name: Pack inventory (audit)
+        working-directory: repo/${{ inputs.working-directory }}
+        run: aaa pack list
