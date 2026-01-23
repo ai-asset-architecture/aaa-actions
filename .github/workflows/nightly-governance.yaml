@@ -1,0 +1,101 @@
+name: nightly-governance
+on:
+  workflow_call:
+    inputs:
+      org:
+        type: string
+        default: ai-asset-architecture
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout docs repo
+        uses: actions/checkout@v4
+        with:
+          path: aaa-tpl-docs
+      - name: Checkout aaa-tools
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-tools
+          path: aaa-tools
+      - name: Checkout aaa-evals
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-evals
+          path: aaa-evals
+      - name: Checkout aaa-tpl-frontend
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-tpl-frontend
+          path: aaa-tpl-frontend
+      - name: Checkout aaa-tpl-service
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-tpl-service
+          path: aaa-tpl-service
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install AAA tools
+        run: |
+          python3 -m pip install -U pip
+          python3 -m pip install -e ./aaa-tools
+      - name: Prepare report path
+        run: |
+          REPORT_TS=$(date -u +%Y%m%d_%H%M)
+          echo "REPORT_TS=${REPORT_TS}" >> "${GITHUB_ENV}"
+          echo "REPORT_PATH=aaa-tpl-docs/reports/audits/nightly_governance_${REPORT_TS}.md" >> "${GITHUB_ENV}"
+      - name: Reindex assets (drift check)
+        run: |
+          aaa run runbook --runbook-file ./aaa-tools/runbooks/ops/reindex-all-assets.yaml
+      - name: Org audit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AAA_TPL_DOCS_DIR: ${{ github.workspace }}/aaa-tpl-docs
+        run: |
+          python3 ./aaa-evals/runner/run_github_audit.py
+      - name: Repo checks (governance)
+        env:
+          AAA_EVALS_ROOT: ${{ github.workspace }}/aaa-evals
+          WORKSPACE_DIR: ${{ github.workspace }}
+        run: |
+          cat <<'JSON' > /tmp/nightly-plan.json
+          {"repos":[{"name":"aaa-tpl-docs","repo_type":"docs"},{"name":"aaa-tpl-service","repo_type":"service"},{"name":"aaa-tpl-frontend","repo_type":"frontend"}]}
+          JSON
+          {
+            echo "# Nightly Governance Report (${REPORT_TS} UTC)"
+            echo ""
+            echo "## Repo Checks (Governance)"
+          } > "${REPORT_PATH}"
+          aaa init repo-checks \
+            --from-plan /tmp/nightly-plan.json \
+            --org "${{ inputs.org }}" \
+            --suite governance \
+            --jsonl --log-dir /tmp/aaa-nightly | tee -a "${REPORT_PATH}"
+      - name: Agent safety check
+        env:
+          AAA_TOOLS_ROOT: ${{ github.workspace }}/aaa-tools
+        run: |
+          {
+            echo ""
+            echo "## Agent Safety"
+          } >> "${REPORT_PATH}"
+          python3 ./aaa-evals/runner/run_repo_checks.py \
+            --check agent_safety \
+            --repo "${{ github.workspace }}" | tee -a "${REPORT_PATH}"
+      - name: Commit reports
+        run: |
+          cd aaa-tpl-docs
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No report changes."
+            exit 0
+          fi
+          git config user.name "aaa-bot"
+          git config user.email "aaa-bot@users.noreply.github.com"
+          git add reports docs milestones
+          git commit -m "chore: nightly governance reports"
+          git push origin HEAD
