@@ -80,6 +80,9 @@ jobs:
             echo "- Reindex Drift Check: aaa run runbook --runbook-file ./aaa-tools/runbooks/ops/reindex-all-assets.yaml"
             echo "  - ZH-TW: 確保索引與實際資產同步，避免治理數據漂移。"
             echo "  - EN: Ensures indexes match real assets to prevent governance drift."
+            echo "- Dashboard Thresholds: compliance=0.8 drift=0.05 health=0.9"
+            echo "  - ZH-TW: 合規率/漂移率/健康度門檻，低於/高於即觸發告警。"
+            echo "  - EN: Compliance/drift/health thresholds trigger alerts when breached."
             echo "- Org Audit: python3 ./aaa-evals/runner/run_github_audit.py"
             echo "  - ZH-TW: 組織級治理稽核，檢查分支保護與 required checks 落地。"
             echo "  - EN: Org-level audit for branch protection and required checks compliance."
@@ -150,8 +153,11 @@ jobs:
             --input /tmp/aaa-nightly/nightly_governance.json \
             --md-out "${REPORT_PATH}" \
             --html-out aaa-tpl-docs/docs/dashboard/index.html \
-            --threshold 0.8
+            --threshold 0.8 \
+            --drift-threshold 0.05 \
+            --health-threshold 0.9
       - name: Commit reports
+        if: ${{ always() }}
         run: |
           cd aaa-tpl-docs
           if [ -z "$(git status --porcelain)" ]; then
