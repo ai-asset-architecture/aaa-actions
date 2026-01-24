@@ -55,6 +55,20 @@ jobs:
           AAA_CHECKS_MANIFEST: ${{ github.workspace }}/aaa-actions/checks.manifest.json
         run: aaa check --mode blocking
 
+      - name: Generate compliance report
+        working-directory: repo/${{ inputs.working-directory }}
+        env:
+          AAA_EVALS_ROOT: ${{ github.workspace }}/aaa-evals
+          AAA_CHECKS_MANIFEST: ${{ github.workspace }}/aaa-actions/checks.manifest.json
+        run: aaa audit --local --output compliance_report.json
+
+      - name: Upload compliance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-report
+          path: repo/${{ inputs.working-directory }}/compliance_report.json
+          retention-days: 90
+
       - name: Pack inventory (audit)
         working-directory: repo/${{ inputs.working-directory }}
         run: aaa pack list
