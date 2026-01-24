@@ -1,0 +1,76 @@
+name: repo-audit
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Repo to audit"
+        required: true
+        default: "ai-asset-architecture/aaa-tpl-docs"
+      ref:
+        description: "Git ref for target repo"
+        required: false
+        default: "main"
+      output_path:
+        description: "Audit JSON path (relative to repo root)"
+        required: true
+        default: "reports/audits/local_audit.json"
+  workflow_call:
+    inputs:
+      repository:
+        type: string
+        required: true
+      ref:
+        type: string
+        required: false
+        default: "main"
+      output_path:
+        type: string
+        required: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref }}
+          path: target
+      - name: Checkout aaa-tools
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-tools
+          path: aaa-tools
+      - name: Checkout aaa-evals
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-evals
+          path: aaa-evals
+      - name: Checkout aaa-actions
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-actions
+          path: aaa-actions
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install aaa-tools (local)
+        run: |
+          python3 -m pip install -U pip
+          python3 -m pip install -e ./aaa-tools
+      - name: Run audit runbook
+        working-directory: target
+        env:
+          AAA_EVALS_ROOT: ${{ github.workspace }}/aaa-evals
+          AAA_CHECKS_MANIFEST: ${{ github.workspace }}/aaa-actions/checks.manifest.json
+        run: |
+          aaa run runbook --runbook-file ../aaa-tools/runbooks/repo/audit.yaml \
+            --input output_path=${{ inputs.output_path }}
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-audit-report
+          path: |
+            target/${{ inputs.output_path }}

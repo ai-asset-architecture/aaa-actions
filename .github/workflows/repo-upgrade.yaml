@@ -1,0 +1,113 @@
+name: repo-upgrade
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Repo with the upgrade plan file"
+        required: true
+        default: "ai-asset-architecture/aaa-tpl-docs"
+      ref:
+        description: "Git ref for target repo"
+        required: false
+        default: "main"
+      org:
+        description: "GitHub org for template application"
+        required: true
+        default: "ai-asset-architecture"
+      plan_path:
+        description: "Path to upgrade plan (relative to repo root)"
+        required: true
+        default: "plans/repo-upgrade.json"
+      aaa_tag:
+        description: "Template tag"
+        required: true
+        default: "v1.0.0"
+      dry_run:
+        description: "Dry run"
+        required: false
+        default: "true"
+  workflow_call:
+    inputs:
+      repository:
+        type: string
+        required: true
+      ref:
+        type: string
+        required: false
+        default: "main"
+      org:
+        type: string
+        required: true
+      plan_path:
+        type: string
+        required: true
+      aaa_tag:
+        type: string
+        required: true
+      dry_run:
+        type: string
+        required: false
+        default: "true"
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref }}
+          path: target
+      - name: Checkout aaa-tools
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-tools
+          path: aaa-tools
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install aaa-tools (local)
+        run: |
+          python3 -m pip install -U pip
+          python3 -m pip install -e ./aaa-tools
+      - name: Run upgrade runbook
+        working-directory: target
+        run: |
+          aaa run runbook --runbook-file ../aaa-tools/runbooks/repo/upgrade.yaml \
+            --input org=${{ inputs.org }} \
+            --input plan_path=${{ inputs.plan_path }} \
+            --input aaa_tag=${{ inputs.aaa_tag }} \
+            --input jsonl=true \
+            --input log_dir=./aaa-logs \
+            --input dry_run=${{ inputs.dry_run }}
+      - name: Detect changes
+        id: changes
+        working-directory: target
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Commit changes
+        if: ${{ steps.changes.outputs.changed == 'true' && inputs.dry_run != 'true' }}
+        working-directory: target
+        run: |
+          git config user.name "aaa-bot"
+          git config user.email "aaa-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: apply upgrade plan"
+          git push origin HEAD
+      - name: No-op (no changes)
+        if: ${{ steps.changes.outputs.changed != 'true' }}
+        run: echo "No changes detected; skipping commit."
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-upgrade-logs
+          path: |
+            target/aaa-logs
