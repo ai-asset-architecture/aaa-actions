@@ -176,6 +176,7 @@ jobs:
           PY
           mkdir -p aaa-tpl-docs/reports/audits
           cp /tmp/aaa-nightly/nightly_governance.json "aaa-tpl-docs/reports/audits/nightly_governance_${REPORT_TS}.json"
+          cp /tmp/aaa-nightly/repo-checks.jsonl "aaa-tpl-docs/reports/audits/repo_checks_${REPORT_TS}.jsonl"
           cat /tmp/nightly_report.md > "${REPORT_PATH}"
       - name: Agent safety check
         env:
