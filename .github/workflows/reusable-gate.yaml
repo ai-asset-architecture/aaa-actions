@@ -76,7 +76,17 @@ jobs:
         run: |
           SRC="repo/${{ inputs.working-directory }}/compliance_report.json"
           DST="repo/compliance_report.json"
-          if [ "$SRC" != "$DST" ]; then
+          SRC_REAL=$(python3 - <<'PY'
+import os
+print(os.path.realpath("repo/${{ inputs.working-directory }}/compliance_report.json"))
+PY
+          )
+          DST_REAL=$(python3 - <<'PY'
+import os
+print(os.path.realpath("repo/compliance_report.json"))
+PY
+          )
+          if [ "$SRC_REAL" != "$DST_REAL" ]; then
             cp "$SRC" "$DST"
           fi
 
