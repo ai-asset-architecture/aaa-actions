@@ -15,6 +15,10 @@ on:
         type: string
         required: false
         default: "main"
+      actions-ref:
+        type: string
+        required: false
+        default: "main"
 
 jobs:
   governance-gate:
@@ -32,6 +36,13 @@ jobs:
           repository: ai-asset-architecture/aaa-tools
           ref: ${{ inputs.tools-ref }}
           path: aaa-tools
+
+      - name: Checkout aaa-actions
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-actions
+          ref: ${{ inputs.actions-ref }}
+          path: aaa-actions
 
       - name: Checkout aaa-evals
         uses: actions/checkout@v4
