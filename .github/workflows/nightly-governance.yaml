@@ -16,6 +16,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: aaa-tpl-docs
+      - name: Checkout public docs
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-docs
+          path: aaa-docs
       - name: Checkout aaa-tools
         uses: actions/checkout@v4
         with:
@@ -31,6 +36,31 @@ jobs:
         with:
           repository: ai-asset-architecture/aaa-actions
           path: aaa-actions
+      - name: Checkout aaa-policies
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-policies
+          path: aaa-policies
+      - name: Checkout aaa-observability
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-observability
+          path: aaa-observability
+      - name: Checkout asset registry
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/ai-asset-architecture-registry
+          path: ai-asset-architecture-registry
+      - name: Checkout aaa-prompts
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/aaa-prompts
+          path: aaa-prompts
+      - name: Checkout org profile
+        uses: actions/checkout@v4
+        with:
+          repository: ai-asset-architecture/.github
+          path: .github
       - name: Checkout aaa-tpl-frontend
         uses: actions/checkout@v4
         with:
@@ -64,6 +94,8 @@ jobs:
         run: |
           aaa run runbook --runbook-file ./aaa-tools/runbooks/ops/reindex-all-assets.yaml
       - name: Repo checks (governance)
+        id: repo_checks
+        continue-on-error: true
         env:
           AAA_EVALS_ROOT: ${{ github.workspace }}/aaa-evals
           WORKSPACE_DIR: ${{ github.workspace }}
@@ -71,7 +103,7 @@ jobs:
         run: |
           mkdir -p /tmp/aaa-nightly
           cat <<'JSON' > /tmp/nightly-plan.json
-          {"repos":[{"name":"aaa-tpl-docs","repo_type":"docs"},{"name":"aaa-tpl-service","repo_type":"service"},{"name":"aaa-tpl-frontend","repo_type":"frontend"}]}
+          {"repos":[{"name":"aaa-tools","repo_type":"docs"},{"name":"aaa-actions","repo_type":"docs"},{"name":"aaa-evals","repo_type":"docs"},{"name":"aaa-policies","repo_type":"docs"},{"name":"aaa-observability","repo_type":"docs"},{"name":".github","repo_type":"docs"},{"name":"ai-asset-architecture-registry","repo_type":"docs"},{"name":"aaa-prompts","repo_type":"docs"},{"name":"aaa-docs","repo_type":"docs"},{"name":"aaa-tpl-docs","repo_type":"docs"},{"name":"aaa-tpl-service","repo_type":"service"},{"name":"aaa-tpl-frontend","repo_type":"frontend"}]}
           JSON
           {
             echo "# Nightly Governance Report (${REPORT_TS} UTC)"
@@ -96,14 +128,21 @@ jobs:
             echo ""
             echo "## Repo Checks (Governance)"
           } > /tmp/nightly_report.md
+          set +e
           aaa init repo-checks \
             --from-plan /tmp/nightly-plan.json \
             --org "${{ inputs.org }}" \
             --suite governance \
             --jsonl --log-dir /tmp/aaa-nightly | tee /tmp/aaa-nightly/repo-checks.jsonl | tee -a /tmp/nightly_report.md
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=${STATUS}" >> "${GITHUB_OUTPUT}"
           python3 - <<'PY'
           import json
           from pathlib import Path
+
+          plan = json.loads(Path("/tmp/nightly-plan.json").read_text(encoding="utf-8"))
+          repo_types = {item.get("name"): item.get("repo_type", "") for item in plan.get("repos", [])}
 
           lines = Path("/tmp/aaa-nightly/repo-checks.jsonl").read_text(encoding="utf-8").strip().splitlines()
           repos = []
@@ -116,9 +155,10 @@ jobs:
                   continue
               data = payload.get("data", {})
               if "repo" in data and "checks" in data:
+                  repo_name = data.get("repo")
                   repos.append({
-                      "name": data.get("repo"),
-                      "repo_type": "unknown",
+                      "name": repo_name,
+                      "repo_type": repo_types.get(repo_name, ""),
                       "archived": False,
                       "checks": data.get("checks", []),
                   })
@@ -148,11 +188,11 @@ jobs:
           aaa run runbook --runbook-file ./aaa-tools/runbooks/ops/reindex-all-assets.yaml
       - name: Render governance dashboard
         run: |
-          mkdir -p aaa-tpl-docs/docs/dashboard
+          mkdir -p aaa-docs/docs/dashboard
           aaa ops render-dashboard \
             --input /tmp/aaa-nightly/nightly_governance.json \
             --md-out "${REPORT_PATH}" \
-            --html-out aaa-tpl-docs/docs/dashboard/index.html \
+            --html-out aaa-docs/docs/dashboard/index.html \
             --threshold 0.8 \
             --drift-threshold 0.05 \
             --health-threshold 0.9
@@ -169,3 +209,21 @@ jobs:
           git add reports docs milestones
           git commit -m "chore: nightly governance reports"
           git push origin HEAD
+      - name: Commit dashboard
+        if: ${{ always() }}
+        run: |
+          cd aaa-docs
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No dashboard changes."
+            exit 0
+          fi
+          git config user.name "aaa-bot"
+          git config user.email "aaa-bot@users.noreply.github.com"
+          git add docs/dashboard
+          git commit -m "chore: update governance dashboard"
+          git push origin HEAD
+      - name: Fail if repo checks failed
+        if: ${{ steps.repo_checks.outputs.exit_code != '0' }}
+        run: |
+          echo "Repo checks failed (${{ steps.repo_checks.outputs.exit_code }})."
+          exit 1
