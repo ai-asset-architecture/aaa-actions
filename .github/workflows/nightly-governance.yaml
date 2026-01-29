@@ -5,6 +5,9 @@ on:
       org:
         type: string
         default: ai-asset-architecture
+      publish_dashboard:
+        type: boolean
+        default: false
 
 jobs:
   nightly:
@@ -171,6 +174,8 @@ jobs:
           }
           Path("/tmp/aaa-nightly/nightly_governance.json").write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
           PY
+          mkdir -p aaa-tpl-docs/reports/audits
+          cp /tmp/aaa-nightly/nightly_governance.json "aaa-tpl-docs/reports/audits/nightly_governance_${REPORT_TS}.json"
           cat /tmp/nightly_report.md > "${REPORT_PATH}"
       - name: Agent safety check
         env:
@@ -187,6 +192,7 @@ jobs:
         run: |
           aaa run runbook --runbook-file ./aaa-tools/runbooks/ops/reindex-all-assets.yaml --format json
       - name: Render governance dashboard
+        if: ${{ inputs.publish_dashboard }}
         run: |
           mkdir -p aaa-docs/docs/dashboard
           aaa ops render-dashboard \
@@ -210,7 +216,7 @@ jobs:
           git commit -m "chore: nightly governance reports"
           git push origin HEAD
       - name: Commit dashboard
-        if: ${{ always() }}
+        if: ${{ always() && inputs.publish_dashboard }}
         run: |
           cd aaa-docs
           if [ -z "$(git status --porcelain)" ]; then
