@@ -106,7 +106,7 @@ jobs:
         run: |
           mkdir -p /tmp/aaa-nightly
           cat <<'JSON' > /tmp/nightly-plan.json
-          {"repos":[{"name":"aaa-tools","repo_type":"docs"},{"name":"aaa-actions","repo_type":"docs"},{"name":"aaa-evals","repo_type":"docs"},{"name":"aaa-policies","repo_type":"docs"},{"name":"aaa-observability","repo_type":"docs"},{"name":".github","repo_type":"docs"},{"name":"ai-asset-architecture-registry","repo_type":"docs"},{"name":"aaa-prompts","repo_type":"docs"},{"name":"aaa-docs","repo_type":"docs"},{"name":"aaa-tpl-docs","repo_type":"docs"},{"name":"aaa-tpl-service","repo_type":"service"},{"name":"aaa-tpl-frontend","repo_type":"frontend"}]}
+          {"repos":[{"name":"aaa-tools","repo_type":"tooling"},{"name":"aaa-actions","repo_type":"actions"},{"name":"aaa-evals","repo_type":"evals"},{"name":"aaa-policies","repo_type":"policies"},{"name":"aaa-observability","repo_type":"observability"},{"name":".github","repo_type":"governance"},{"name":"ai-asset-architecture-registry","repo_type":"registry"},{"name":"aaa-prompts","repo_type":"prompts"},{"name":"aaa-docs","repo_type":"docs"},{"name":"aaa-tpl-docs","repo_type":"templates"},{"name":"aaa-tpl-service","repo_type":"service"},{"name":"aaa-tpl-frontend","repo_type":"frontend"}]}
           JSON
           {
             echo "# Nightly Governance Report (${REPORT_TS} UTC)"
