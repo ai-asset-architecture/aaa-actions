@@ -84,7 +84,7 @@ jobs:
           python3 -m pip install -e ./aaa-tools
       - name: Prepare report path
         run: |
-          REPORT_TS=$(date -u +%Y%m%d_%H%M)
+          REPORT_TS=$(TZ=Asia/Taipei date +%Y%m%d_%H%M)
           echo "REPORT_TS=${REPORT_TS}" >> "${GITHUB_ENV}"
           echo "REPORT_PATH=aaa-tpl-docs/reports/audits/nightly_governance_${REPORT_TS}.md" >> "${GITHUB_ENV}"
       - name: Org audit
@@ -109,7 +109,7 @@ jobs:
           {"repos":[{"name":"aaa-tools","repo_type":"tooling"},{"name":"aaa-actions","repo_type":"actions"},{"name":"aaa-evals","repo_type":"evals"},{"name":"aaa-policies","repo_type":"policies"},{"name":"aaa-observability","repo_type":"observability"},{"name":".github","repo_type":"governance"},{"name":"ai-asset-architecture-registry","repo_type":"registry"},{"name":"aaa-prompts","repo_type":"prompts"},{"name":"aaa-docs","repo_type":"docs"},{"name":"aaa-tpl-docs","repo_type":"templates"},{"name":"aaa-tpl-service","repo_type":"service"},{"name":"aaa-tpl-frontend","repo_type":"frontend"}]}
           JSON
           {
-            echo "# Nightly Governance Report (${REPORT_TS} UTC)"
+            echo "# Nightly Governance Report (${REPORT_TS} Asia/Taipei)"
             echo ""
             echo "## Nightly Test Cases"
             echo "- Reindex Drift Check: aaa run runbook --runbook-file ./aaa-tools/runbooks/ops/reindex-all-assets.yaml"
@@ -142,8 +142,10 @@ jobs:
           echo "exit_code=${STATUS}" >> "${GITHUB_OUTPUT}"
           python3 - <<'PY'
           import json
+          import os
           from pathlib import Path
 
+          report_ts = os.environ.get("REPORT_TS", "")
           plan = json.loads(Path("/tmp/nightly-plan.json").read_text(encoding="utf-8"))
           repo_types = {item.get("name"): item.get("repo_type", "") for item in plan.get("repos", [])}
 
@@ -166,7 +168,7 @@ jobs:
                       "checks": data.get("checks", []),
                   })
           snapshot = {
-              "generated_at": "${REPORT_TS}",
+              "generated_at": report_ts,
               "org": "${{ inputs.org }}",
               "repo_count": len(repos),
               "compliance_rate": 0.0,
