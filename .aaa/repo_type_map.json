@@ -26,7 +26,6 @@
     "ai-asset-architecture-registry": "registry",
     "aaa-prompts": "prompts",
     "aaa-docs": "docs",
-    "aaa-tpl-docs": "templates",
     "aaa-tpl-service": "service",
     "aaa-tpl-frontend": "frontend"
   }
