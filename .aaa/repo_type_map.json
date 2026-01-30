@@ -1,0 +1,33 @@
+{
+  "version": "v2.0.5",
+  "allowed_types": [
+    "governance",
+    "policies",
+    "audit",
+    "workspace",
+    "docs",
+    "templates",
+    "tooling",
+    "actions",
+    "evals",
+    "observability",
+    "prompts",
+    "registry",
+    "service",
+    "frontend"
+  ],
+  "repo_type_map": {
+    "aaa-tools": "tooling",
+    "aaa-actions": "actions",
+    "aaa-evals": "evals",
+    "aaa-policies": "policies",
+    "aaa-observability": "observability",
+    ".github": "governance",
+    "ai-asset-architecture-registry": "registry",
+    "aaa-prompts": "prompts",
+    "aaa-docs": "docs",
+    "aaa-tpl-docs": "templates",
+    "aaa-tpl-service": "service",
+    "aaa-tpl-frontend": "frontend"
+  }
+}

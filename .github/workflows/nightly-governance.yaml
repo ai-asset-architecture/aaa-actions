@@ -105,9 +105,31 @@ jobs:
           AAA_CHECKS_MANIFEST: ${{ github.workspace }}/aaa-actions/checks.manifest.json
         run: |
           mkdir -p /tmp/aaa-nightly
-          cat <<'JSON' > /tmp/nightly-plan.json
-          {"repos":[{"name":"aaa-tools","repo_type":"tooling"},{"name":"aaa-actions","repo_type":"actions"},{"name":"aaa-evals","repo_type":"evals"},{"name":"aaa-policies","repo_type":"policies"},{"name":"aaa-observability","repo_type":"observability"},{"name":".github","repo_type":"governance"},{"name":"ai-asset-architecture-registry","repo_type":"registry"},{"name":"aaa-prompts","repo_type":"prompts"},{"name":"aaa-docs","repo_type":"docs"},{"name":"aaa-tpl-docs","repo_type":"templates"},{"name":"aaa-tpl-service","repo_type":"service"},{"name":"aaa-tpl-frontend","repo_type":"frontend"}]}
-          JSON
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          map_path = Path("${{ github.workspace }}/aaa-actions/.aaa/repo_type_map.json")
+          data = json.loads(map_path.read_text(encoding="utf-8"))
+          repo_type_map = data.get("repo_type_map", {})
+          expected_repos = [
+              "aaa-tools",
+              "aaa-actions",
+              "aaa-evals",
+              "aaa-policies",
+              "aaa-observability",
+              ".github",
+              "ai-asset-architecture-registry",
+              "aaa-prompts",
+              "aaa-docs",
+              "aaa-tpl-docs",
+              "aaa-tpl-service",
+              "aaa-tpl-frontend",
+          ]
+          repos = [{"name": name, "repo_type": repo_type_map.get(name, "")} for name in expected_repos]
+          Path("/tmp/nightly-plan.json").write_text(json.dumps({"repos": repos}, indent=2), encoding="utf-8")
+          print(f"INFO repo_type_map_loaded path={map_path} version={data.get('version')}")
+          PY
           {
             echo "# Nightly Governance Report (${REPORT_TS} Asia/Taipei)"
             echo ""
@@ -146,6 +168,24 @@ jobs:
           from pathlib import Path
 
           report_ts = os.environ.get("REPORT_TS", "")
+          map_path = Path("${{ github.workspace }}/aaa-actions/.aaa/repo_type_map.json")
+          map_data = json.loads(map_path.read_text(encoding="utf-8"))
+          allowed_types = set(map_data.get("allowed_types", []))
+          repo_type_map = map_data.get("repo_type_map", {})
+          expected_repos = [
+              "aaa-tools",
+              "aaa-actions",
+              "aaa-evals",
+              "aaa-policies",
+              "aaa-observability",
+              ".github",
+              "ai-asset-architecture-registry",
+              "aaa-prompts",
+              "aaa-docs",
+              "aaa-tpl-docs",
+              "aaa-tpl-service",
+              "aaa-tpl-frontend",
+          ]
           plan = json.loads(Path("/tmp/nightly-plan.json").read_text(encoding="utf-8"))
           repo_types = {item.get("name"): item.get("repo_type", "") for item in plan.get("repos", [])}
 
@@ -161,12 +201,24 @@ jobs:
               data = payload.get("data", {})
               if "repo" in data and "checks" in data:
                   repo_name = data.get("repo")
+                  repo_type = repo_types.get(repo_name, "")
+                  if not repo_type:
+                      print(f"ERROR missing_repo_type_mapping repo={repo_name}")
+                  elif repo_type not in allowed_types:
+                      print(f"WARN unknown_repo_type repo={repo_name} value={repo_type}")
                   repos.append({
                       "name": repo_name,
-                      "repo_type": repo_types.get(repo_name, ""),
+                      "repo_type": repo_type,
                       "archived": False,
                       "checks": data.get("checks", []),
                   })
+          missing = [name for name in expected_repos if name not in repo_type_map]
+          if missing:
+              for name in missing:
+                  print(f"ERROR missing_repo_type_mapping repo={name}")
+              raise SystemExit(1)
+          coverage = int(100 * (len(expected_repos) - len(missing)) / len(expected_repos)) if expected_repos else 0
+          print(f"INFO repo_type_map_coverage={coverage}%")
           snapshot = {
               "generated_at": report_ts,
               "org": "${{ inputs.org }}",
